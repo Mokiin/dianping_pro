@@ -7,4 +7,6 @@ public class SystemConstants {
     public static final int MAX_PAGE_SIZE = 10;
     public static final String SESSION_CODE = "code";
     public static final String SESSION_USER = "user";
+    public static final String PHONE = "phone";
+    public static final String TOKEN = "authorization";
 }
