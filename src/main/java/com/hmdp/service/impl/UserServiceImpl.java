@@ -15,6 +15,7 @@ import com.hmdp.service.IUserService;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.SystemConstants;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,9 @@ import java.util.concurrent.TimeUnit;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
 
     @Resource
-    private RedisTemplate<String, Object> redisTemplate;
+    private RedisTemplate<String, String> redisTemplate;
+
+    private static String REDIS_CACHE_USER = "";
 
     @Override
     public Result sendCode(String phone, HttpSession session) {
@@ -69,9 +72,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 前端返回的验证码
         String code = loginForm.getCode();
         // 从redis获取验证码
-        String cacheCode = (String) redisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + phone);
-        // Object cacheCode = session.getAttribute(SystemConstants.SESSION_CODE);
-
+        String cacheCode = redisTemplate.opsForValue().get(RedisConstants.LOGIN_CODE_KEY + phone);
         // 判断redis中是否存在验证码及验证码是否正确
         if (cacheCode == null || !cacheCode.equals(code)) {
             return Result.fail("验证码错误");
@@ -90,18 +91,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 将user对象主要属性提取放入到userDTO
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         // 将userDTO转换为map
-        Map<String, Object> valueMap = BeanUtil.beanToMap(userDTO, new HashMap<>(), CopyOptions.create()
-                .setIgnoreNullValue(true)
-                .setFieldValueEditor((filedName, filedValue) -> filedValue.toString()));
+        Map<String, Object> userMap = BeanUtil.beanToMap(userDTO);
         // 存入redis
         String tokenKey = RedisConstants.LOGIN_USER_KEY + key;
-        redisTemplate.opsForHash().putAll(RedisConstants.LOGIN_USER_KEY + tokenKey, valueMap);
+        REDIS_CACHE_USER = tokenKey;
+        log.info("REDIS_CACHE_USER_1{}",REDIS_CACHE_USER);
+        redisTemplate.opsForHash().putAll(tokenKey, userMap);
         // 设置key的有效期
         redisTemplate.expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.SECONDS);
-        // 不需要把user信息全部存入到session，提取一些不重要属性到UserDTO中，再把UserDTO存入到session
-        // session.setAttribute(SystemConstants.SESSION_USER, BeanUtil.copyProperties(user, UserDTO.class));
         // 把token返回到前端
         return Result.ok(key);
+    }
+
+    @Override
+    public Result logout() {
+        log.info("REDIS_CACHE_USER_2{}",REDIS_CACHE_USER);
+        redisTemplate.delete(REDIS_CACHE_USER);
+        return Result.ok();
     }
 
     private User createUserWithPhone(String phone, String password) {
@@ -114,6 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (!"".equals(password)) {
             user.setPassword(password);
         }
+        baseMapper.insert(user);
         return user;
     }
 }

@@ -15,7 +15,7 @@ import javax.annotation.Resource;
 public class MvcConfig implements WebMvcConfigurer {
 
     @Resource
-    private RedisTemplate<String, Object> redisTemplate;
+    private RedisTemplate<String, String> redisTemplate;
     /**
      * 添加拦截器
      * @param registry
