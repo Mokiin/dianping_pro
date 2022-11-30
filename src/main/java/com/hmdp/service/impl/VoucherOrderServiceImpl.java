@@ -10,10 +10,9 @@ import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.hmdp.utils.RedisConstants;
-import com.hmdp.utils.RedisIDWorker;
-import com.hmdp.utils.SystemConstants;
-import com.hmdp.utils.UserHolder;
+import com.hmdp.utils.*;
+import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +36,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Resource
     private RedisIDWorker redisIDWorker;
 
+    @Resource
+    private RedisTemplate<String, String> redisTemplate;
+
     @Override
     @Transactional
     public Result seckillVoucher(Long voucherId) {
@@ -52,15 +54,41 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         //3 判断库存是否充足
         Integer stock = voucher.getStock();
-        if (stock < 1){
+        if (stock < 1) {
             return Result.fail("库存不足");
+        }
+        Long user = UserHolder.getUser().getId();
+        SimpleRedisLock lock = new SimpleRedisLock(redisTemplate, RedisConstants.ORDER_PREFIX + user);
+        boolean isLock = lock.tryLock(60);
+        if (!isLock) {
+            return Result.fail("不允许重复下单");
+        }
+        try {
+            // 获取代理对象（事务）
+            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+            return proxy.createVoucherOrder(voucherId, stock);
+        } finally {
+            lock.unlock();
+        }
+
+    }
+
+    @Transactional
+    public Result createVoucherOrder(Long voucherId, Integer stock) {
+        // 一人只可以购买一次
+        Long user = UserHolder.getUser().getId();
+        LambdaUpdateWrapper<VoucherOrder> countWrapper = new LambdaUpdateWrapper<>();
+        // 查询订单
+        countWrapper.eq(VoucherOrder::getId, user).eq(VoucherOrder::getVoucherId, voucherId);
+        Integer count = baseMapper.selectCount(countWrapper);
+        if (count > 0) {
+            return Result.fail("您也购买过");
         }
         //3.1 充足扣减库存
         LambdaUpdateWrapper<SeckillVoucher> wrapper = new LambdaUpdateWrapper<>();
-        wrapper.set(SeckillVoucher::getStock,stock - 1);
-        wrapper.eq(SeckillVoucher::getVoucherId, voucherId);
+        wrapper.set(SeckillVoucher::getStock, stock - 1).eq(SeckillVoucher::getVoucherId, voucherId).gt(SeckillVoucher::getStock, 0);
         boolean success = iSeckillVoucherService.update(wrapper);
-        if (!success){
+        if (!success) {
             // 扣减失败
             return Result.fail("库存不足");
         }

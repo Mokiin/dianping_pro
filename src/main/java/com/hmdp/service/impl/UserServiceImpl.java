@@ -4,6 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.RandomUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.LoginFormDTO;
@@ -42,6 +43,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     @Resource
     private RedisTemplate<String, String> redisTemplate;
 
+    @Resource
+    private IUserService userService;
+
     private static String REDIS_CACHE_USER = "";
 
     @Override
@@ -79,9 +83,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
         // 通过手机号向数据库查询
         QueryWrapper<User> wrapper = new QueryWrapper<User>().eq(SystemConstants.PHONE, phone);
-        // TODO LambdaQueryWrapper
         // 数据库查询到的用户
-        User user = baseMapper.selectOne(wrapper);
+         User user = baseMapper.selectOne(wrapper);
         // 如果数据库没有该用户就注册
         if (user == null) {
             user = createUserWithPhone(phone, loginForm.getPassword());
