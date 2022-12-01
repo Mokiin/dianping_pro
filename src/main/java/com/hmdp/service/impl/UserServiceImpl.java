@@ -98,7 +98,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 存入redis
         String tokenKey = RedisConstants.LOGIN_USER_KEY + key;
         REDIS_CACHE_USER = tokenKey;
-        log.info("REDIS_CACHE_USER_1{}",REDIS_CACHE_USER);
         redisTemplate.opsForHash().putAll(tokenKey, userMap);
         // 设置key的有效期
         redisTemplate.expire(tokenKey, RedisConstants.LOGIN_USER_TTL, TimeUnit.SECONDS);
@@ -108,7 +107,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result logout() {
-        log.info("REDIS_CACHE_USER_2{}",REDIS_CACHE_USER);
         redisTemplate.delete(REDIS_CACHE_USER);
         return Result.ok();
     }
