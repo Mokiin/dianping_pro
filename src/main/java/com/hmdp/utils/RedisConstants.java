@@ -23,5 +23,6 @@ public class RedisConstants {
     public static final String KEY_PREFIX = "lock:";
     public static final String ORDER_PREFIX = "lock:order:";
     public static final String ORDER = "order:";
+    public static final String STREAM_ORDERS = "stream.orders";
 
 }
