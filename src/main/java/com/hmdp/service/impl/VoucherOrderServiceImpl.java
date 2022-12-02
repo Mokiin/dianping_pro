@@ -220,7 +220,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         LambdaUpdateWrapper<VoucherOrder> countWrapper = new LambdaUpdateWrapper<>();
         // 查询订单
         countWrapper.eq(VoucherOrder::getId, userId).eq(VoucherOrder::getVoucherId, voucherOrder.getVoucherId());
-        Integer count = baseMapper.selectCount(countWrapper);
+        Long count = baseMapper.selectCount(countWrapper);
         if (count > 0) {
             log.error("限购一次");
             return;
