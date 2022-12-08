@@ -25,4 +25,8 @@ public interface IUserService extends IService<User> {
     Result logout();
 
     Result getUserById(Long userId);
+
+    Result sign();
+
+    Result signCount();
 }
