@@ -105,10 +105,29 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         return Result.ok(key);
     }
 
+    /**
+     * 退出登录
+     * @return
+     */
     @Override
     public Result logout() {
         redisTemplate.delete(REDIS_CACHE_USER);
         return Result.ok();
+    }
+
+    /**
+     * 通过userID获取user对象
+     * @param userId
+     * @return
+     */
+    @Override
+    public Result getUserById(Long userId) {
+        User user = baseMapper.selectById(userId);
+        if (user == null) {
+            return Result.fail("用户不存在");
+        }
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+        return Result.ok(userDTO);
     }
 
     private User createUserWithPhone(String phone, String password) {
